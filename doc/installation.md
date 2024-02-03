@@ -12,7 +12,7 @@ Regardless of the installation type, you need the following packages:
 You can download the development sources through git:
 
 ```bash
-git clone https://github.com/buzz-lang/Buzz.git buzz
+git clone https://github.com/sorensej/Buzz buzz
 ```
 
 ## Standalone Installation
