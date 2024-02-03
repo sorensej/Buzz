@@ -10,6 +10,8 @@
 #include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_light_sensor.h>
 #include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_gripper_actuator.h>
 #include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_turret_actuator.h>
+#include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_distance_scanner_actuator.h>
+#include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_distance_scanner_sensor.h>
 
 using namespace argos;
 
@@ -61,6 +63,9 @@ public:
    void TurretEnable();
    void TurretDisable();
    void TurretSet(Real f_rotation);
+   void DistanceScannerSetRPM(Real f_rpm);
+   void DistanceScannerEnable();
+   void DistanceScannerDisable();
 
 protected:
 
@@ -78,6 +83,10 @@ protected:
    CCI_FootBotTurretActuator* m_pcTurretA;
    /* Pointer to the proximity sensor */
    CCI_FootBotProximitySensor* m_pcProximity;
+   /* Pointer to the distance scanner actuator */
+   CCI_FootBotDistanceScannerActuator* m_pcDistanceScannerA;
+   /* Pointer to the distance scanner sensor */
+   CCI_FootBotDistanceScannerSensor* m_pcDistanceScannerS;
    /* Pointer to the light sensor */
    CCI_FootBotLightSensor* m_pcLight;
    /* Pointer to the camera sensor */

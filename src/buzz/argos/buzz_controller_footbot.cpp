@@ -275,11 +275,51 @@ static int BuzzTurretSet(buzzvm_t vm) {
 /****************************************/
 /****************************************/
 
+static int BuzzDistanceScannerEnable(buzzvm_t vm) {
+   /* Get pointer to the controller */
+   buzzvm_pushs(vm, buzzvm_string_register(vm, "controller", 1));
+   buzzvm_gload(vm);
+   /* Call function */
+   reinterpret_cast<CBuzzControllerFootBot*>(
+      buzzvm_stack_at(vm, 1)->u.value)->DistanceScannerEnable();
+   return buzzvm_ret0(vm);
+}
+
+static int BuzzDistanceScannerDisable(buzzvm_t vm) {
+   /* Get pointer to the controller */
+   buzzvm_pushs(vm, buzzvm_string_register(vm, "controller", 1));
+   buzzvm_gload(vm);
+   /* Call function */
+   reinterpret_cast<CBuzzControllerFootBot*>(
+      buzzvm_stack_at(vm, 1)->u.value)->DistanceScannerDisable();
+   return buzzvm_ret0(vm);
+}
+
+static int BuzzDistanceScannerSetRPM(buzzvm_t vm) {
+   buzzvm_lnum_assert(vm, 1);
+   /* Push rpm */
+   buzzvm_lload(vm, 1);
+   buzzvm_type_assert(vm, 1, BUZZTYPE_FLOAT);
+   /* Get pointer to the controller */
+   buzzvm_pushs(vm, buzzvm_string_register(vm, "controller", 1));
+   buzzvm_gload(vm);
+   /* Call function */
+   reinterpret_cast<CBuzzControllerFootBot*>(
+      buzzvm_stack_at(vm, 1)->u.value)->DistanceScannerSetRPM(
+         buzzvm_stack_at(vm, 2)->f.value);
+   return buzzvm_ret0(vm);
+}
+
+/****************************************/
+/****************************************/
+
 CBuzzControllerFootBot::CBuzzControllerFootBot() :
    m_pcWheelsA(NULL),
    m_pcLEDs(NULL),
    m_pcGripper(NULL),
    m_pcProximity(NULL),
+   m_pcDistanceScannerA(NULL),
+   m_pcDistanceScannerS(NULL),
    m_pcLight(NULL),
    m_pcCamera(NULL),
    m_pcWheelsS(NULL) {
@@ -309,6 +349,10 @@ void CBuzzControllerFootBot::Init(TConfigurationNode& t_node) {
       try { m_pcTurretA = GetActuator<CCI_FootBotTurretActuator>("footbot_turret"); }
       catch(CARGoSException& ex) {}
       try { m_pcProximity = GetSensor<CCI_FootBotProximitySensor>("footbot_proximity"); }
+      catch(CARGoSException& ex) {}
+      try { m_pcDistanceScannerA = GetActuator<CCI_FootBotDistanceScannerActuator>("footbot_distance_scanner"); }
+      catch(CARGoSException& ex) {}
+      try { m_pcDistanceScannerS = GetSensor<CCI_FootBotDistanceScannerSensor>("footbot_distance_scanner"); }
       catch(CARGoSException& ex) {}
       try { m_pcLight = GetSensor<CCI_FootBotLightSensor>("footbot_light"); }
       catch(CARGoSException& ex) {}
@@ -380,6 +424,34 @@ void CBuzzControllerFootBot::UpdateSensors() {
          TablePut(tLightRead, "angle", tLightReads[i].Angle);
          /* Store read table in the light table */
          TablePut(tLightTable, i, tLightRead);
+      }
+   }
+   
+   /*
+   * Update distance scanner sensor table
+   */
+   if(m_pcDistanceScannerS) {
+      /* Create empty distance scanner table */
+      buzzvm_pushs(m_tBuzzVM, buzzvm_string_register(m_tBuzzVM, "distance_scanner", 1));
+      buzzvm_pusht(m_tBuzzVM);
+      buzzobj_t tDistanceScannerTable = buzzvm_stack_at(m_tBuzzVM, 1);
+      buzzvm_gstore(m_tBuzzVM);
+      /* Get distance readings */
+      const CCI_FootBotDistanceScannerSensor::TReadingsMap& tDistanceScannerReads = m_pcDistanceScannerS->GetReadingsMap();
+      /* Fill into the distance table */
+      buzzobj_t tDistanceScannerRead;
+      int i = 0;
+      for(auto const& [key, val] : tDistanceScannerReads) {
+         /* Create table for i-th read */
+         buzzvm_pusht(m_tBuzzVM);
+         tDistanceScannerRead = buzzvm_stack_at(m_tBuzzVM, 1);
+         buzzvm_pop(m_tBuzzVM);
+         /* Fill in the read */
+         TablePut(tDistanceScannerRead, "value", val);
+         TablePut(tDistanceScannerRead, "angle", key);
+         /* Store read table in the distance scanner table */
+         TablePut(tDistanceScannerTable, i, tDistanceScannerRead);
+         i++;
       }
    }
    /*
@@ -577,6 +649,27 @@ void CBuzzControllerFootBot::TurretSet(Real f_rotation) {
 /****************************************/
 /****************************************/
 
+void CBuzzControllerFootBot::DistanceScannerEnable() {
+   m_pcDistanceScannerA->Enable();
+}
+
+/****************************************/
+/****************************************/
+
+void CBuzzControllerFootBot::DistanceScannerDisable() {
+  m_pcDistanceScannerA->Disable();
+}
+
+/****************************************/
+/****************************************/
+
+void CBuzzControllerFootBot::DistanceScannerSetRPM(Real f_rpm) {
+   m_pcDistanceScannerA->SetRPM(f_rpm);
+}
+
+/****************************************/
+/****************************************/
+
 buzzvm_state CBuzzControllerFootBot::RegisterFunctions() {
    /* Register base functions */
    CBuzzController::RegisterFunctions();
@@ -639,6 +732,20 @@ buzzvm_state CBuzzControllerFootBot::RegisterFunctions() {
       /* BuzzTurretSet */
       buzzvm_pushs(m_tBuzzVM, buzzvm_string_register(m_tBuzzVM, "turret_set", 1));
       buzzvm_pushcc(m_tBuzzVM, buzzvm_function_register(m_tBuzzVM, BuzzTurretSet));
+      buzzvm_gstore(m_tBuzzVM);
+   }
+   if(m_pcDistanceScannerA) {
+      /* BuzzDistanceScannerEnable */
+      buzzvm_pushs(m_tBuzzVM, buzzvm_string_register(m_tBuzzVM, "distance_scanner_enable", 1));
+      buzzvm_pushcc(m_tBuzzVM, buzzvm_function_register(m_tBuzzVM, BuzzDistanceScannerEnable));
+      buzzvm_gstore(m_tBuzzVM);
+      /* BuzzDistanceScannerDisable */
+      buzzvm_pushs(m_tBuzzVM, buzzvm_string_register(m_tBuzzVM, "distance_scanner_disable", 1));
+      buzzvm_pushcc(m_tBuzzVM, buzzvm_function_register(m_tBuzzVM, BuzzTurretDisable));
+      buzzvm_gstore(m_tBuzzVM);
+      /* BuzzDistanceScannerSetRPM */
+      buzzvm_pushs(m_tBuzzVM, buzzvm_string_register(m_tBuzzVM, "distance_scanner_set_rpm", 1));
+      buzzvm_pushcc(m_tBuzzVM, buzzvm_function_register(m_tBuzzVM, BuzzDistanceScannerSetRPM));
       buzzvm_gstore(m_tBuzzVM);
    }
    return m_tBuzzVM->state;
